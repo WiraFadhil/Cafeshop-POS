@@ -190,9 +190,8 @@ function addToCart(id) {
 function updateCartUI() {
   const count = cart.reduce((a, b) => a + b.qty, 0);
   const total = cart.reduce((a, b) => a + b.harga * b.qty, 0);
-  document
-    .getElementById("cart-floating")
-    .classList.toggle("hidden", count === 0);
+  const float = document.getElementById("cart-floating");
+  if (float) float.classList.toggle("hidden", count === 0);
   document.getElementById("cart-count").innerText = count;
   document.getElementById("cart-total").innerText =
     `Rp ${total.toLocaleString()}`;
@@ -203,12 +202,14 @@ function updateCartUI() {
 }
 
 function openCheckout() {
-  document.getElementById("modal-checkout").classList.remove("hidden");
+  const modal = document.getElementById("modal-checkout");
+  if (modal) modal.classList.remove("hidden");
   renderCheckoutItems();
 }
 
 function closeCheckout() {
-  document.getElementById("modal-checkout").classList.add("hidden");
+  const modal = document.getElementById("modal-checkout");
+  if (modal) modal.classList.add("hidden");
 }
 
 function renderCheckoutItems() {
@@ -248,14 +249,16 @@ function handlePayment() {
   if (!tableNum) return showNotification("No. Meja wajib diisi!", "error");
 
   if (method === "QRIS") {
-    document.getElementById("modal-qris").classList.remove("hidden");
+    const qrisModal = document.getElementById("modal-qris");
+    if (qrisModal) qrisModal.classList.remove("hidden");
   } else {
     finishOrderProcess("Tunai", null);
   }
 }
 
 function closeQRIS() {
-  document.getElementById("modal-qris").classList.add("hidden");
+  const qrisModal = document.getElementById("modal-qris");
+  if (qrisModal) qrisModal.classList.add("hidden");
 }
 
 document.getElementById("input-receipt").onchange = (e) => {
@@ -278,21 +281,17 @@ async function uploadAndFinish() {
 
   const file = fileInput.files[0];
   const fileExt = file.name.split(".").pop();
-  
-  // PERBAIKAN: Hapus "receipts/" di depan template literal ini
-  const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+  const filePath = `receipts/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
   try {
-    // Gunakan fileName yang sudah diperbaiki
     const { error: uploadError } = await sbClient.storage
       .from("receipts")
-      .upload(fileName, file); // Gunakan fileName di sini
+      .upload(filePath, file);
     if (uploadError) throw uploadError;
 
     const { data: urlData } = sbClient.storage
       .from("receipts")
-      .getPublicUrl(fileName); // Gunakan fileName di sini
-      
+      .getPublicUrl(filePath);
     await finishOrderProcess("QRIS", urlData.publicUrl);
   } catch (err) {
     btn.disabled = false;
@@ -348,51 +347,44 @@ function renderBaristaGrid(orders) {
   if (!grid || window.currentView !== "barista") return;
 
   const active = orders.filter((o) => o.status !== "Selesai");
-
   grid.innerHTML = active
-    .map((o) => {
-      const isQRIS = o.pembayaran === "QRIS";
-      const hasReceipt = o.bukti_bayar && o.bukti_bayar !== "null" && o.bukti_bayar !== "";
-
-      return `
-        <div class="dark-glass rounded-[2rem] p-6 transition-all border-l-[6px] ${
-          o.status === "Verifikasi" ? "border-l-orange-500" : "border-l-amber-600"
-        }">
-            <div class="flex justify-between items-start mb-6">
-                <div>
-                    <span class="text-[10px] font-black uppercase tracking-widest text-orange-500/60 block mb-1">Meja ${o.meja}</span>
-                    <span class="text-[10px] font-bold text-stone-500">${o.waktu}</span>
-                </div>
-                <div class="px-3 py-1 bg-white/5 rounded-lg text-[8px] font-black uppercase tracking-widest text-white/40">${o.pembayaran}</div>
-            </div>
-            
-            <div class="space-y-3 mb-8 min-h-[100px] overflow-y-auto no-scrollbar">
-                ${o.items.map(i => `
-                    <div class="flex items-center gap-3">
-                        <span class="w-6 h-6 flex items-center justify-center bg-orange-600 rounded-lg text-[10px] font-black text-white">${i.qty}</span>
-                        <span class="text-xs font-bold text-stone-200">${i.nama}</span>
+    .map(
+      (o) => `
+                <div class="dark-glass rounded-[2rem] p-6 transition-all border-l-[6px] ${o.status === "Verifikasi" ? "border-l-orange-500" : "border-l-amber-600"}">
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <span class="text-[10px] font-black uppercase tracking-widest text-orange-500/60 block mb-1">Meja ${o.meja}</span>
+                            <span class="text-[10px] font-bold text-stone-500">${o.waktu}</span>
+                        </div>
+                        <div class="px-3 py-1 bg-white/5 rounded-lg text-[8px] font-black uppercase tracking-widest text-white/40">${o.pembayaran}</div>
                     </div>
-                `).join("")}
-            </div>
-
-            <div class="pt-6 border-t border-white/5 space-y-3">
-                ${
-                  isQRIS && hasReceipt
-                    ? `<button onclick="previewImage('${o.bukti_bayar}')" class="w-full py-3 bg-white/5 text-orange-400 rounded-xl font-black text-[9px] uppercase tracking-widest border border-orange-500/20 hover:bg-orange-500/10 transition-all">Cek Bukti Transfer</button>`
-                    : isQRIS 
-                    ? `<span class="block text-center text-[9px] font-bold text-red-500/60 uppercase tracking-widest italic py-2">Menunggu Unggahan Bukti</span>`
-                    : ""
-                }
-
-                ${
-                  o.status === "Verifikasi"
-                    ? `<button onclick="updateOrderStatus(${o.id}, 'Antre')" class="w-full py-3 bg-orange-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">Terima & Proses</button>`
-                    : `<button onclick="updateOrderStatus(${o.id}, 'Selesai')" class="w-full py-4 bg-amber-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all">Selesai & Antar</button>`
-                }
-            </div>
-        </div>
-      `;
-    })
+                    <div class="space-y-3 mb-8 min-h-[100px] overflow-y-auto no-scrollbar">
+                        ${o.items
+                          .map(
+                            (i) => `
+                            <div class="flex items-center gap-3">
+                                <span class="w-6 h-6 flex items-center justify-center bg-orange-600 rounded-lg text-[10px] font-black text-white">${i.qty}</span>
+                                <span class="text-xs font-bold text-stone-200">${i.nama}</span>
+                            </div>
+                        `,
+                          )
+                          .join("")}
+                    </div>
+                    <div class="pt-6 border-t border-white/5 space-y-3">
+                        ${
+                          o.status === "Verifikasi"
+                            ? `
+                            <button onclick="previewImage('${o.bukti_bayar}')" class="w-full py-3 bg-white/5 text-orange-400 rounded-xl font-black text-[9px] uppercase tracking-widest border border-orange-500/20">Cek Bukti</button>
+                            <button onclick="updateOrderStatus(${o.id}, 'Antre')" class="w-full py-3 bg-orange-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl">Terima Order</button>
+                        `
+                            : `
+                            <button onclick="updateOrderStatus(${o.id}, 'Selesai')" class="w-full py-4 bg-amber-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg">Selesai & Antar</button>
+                        `
+                        }
+                    </div>
+                </div>
+            `,
+    )
     .join("");
 
   if (active.length === 0) {
@@ -430,82 +422,86 @@ function updateCharts(orders) {
     else timeData[3]++;
   });
 
-  if (!statusChart) {
-    const ctxS = document.getElementById("statusChart").getContext("2d");
-    statusChart = new Chart(ctxS, {
-      type: "doughnut",
-      data: {
-        labels: ["Verifikasi", "Proses", "Selesai"],
-        datasets: [
-          {
-            data: [stats.verifikasi, stats.antre, stats.selesai],
-            backgroundColor: ["#ea580c", "#d97706", "#10b981"],
-            borderWidth: 0,
-          },
-        ],
-      },
-      options: {
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: "bottom",
-            labels: {
-              color: "#78716c",
-              font: { weight: "bold", size: 9 },
-              padding: 15,
+  const ctxS = document.getElementById("statusChart");
+  if (ctxS) {
+    if (!statusChart) {
+      statusChart = new Chart(ctxS.getContext("2d"), {
+        type: "doughnut",
+        data: {
+          labels: ["Verifikasi", "Proses", "Selesai"],
+          datasets: [
+            {
+              data: [stats.verifikasi, stats.antre, stats.selesai],
+              backgroundColor: ["#ea580c", "#d97706", "#10b981"],
+              borderWidth: 0,
+            },
+          ],
+        },
+        options: {
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: {
+                color: "#78716c",
+                font: { weight: "bold", size: 9 },
+                padding: 15,
+              },
             },
           },
+          cutout: "70%",
         },
-        cutout: "70%",
-      },
-    });
-  } else {
-    statusChart.data.datasets[0].data = [
-      stats.verifikasi,
-      stats.antre,
-      stats.selesai,
-    ];
-    statusChart.update();
+      });
+    } else {
+      statusChart.data.datasets[0].data = [
+        stats.verifikasi,
+        stats.antre,
+        stats.selesai,
+      ];
+      statusChart.update();
+    }
   }
 
-  if (!salesChart) {
-    const ctxL = document.getElementById("salesChart").getContext("2d");
-    salesChart = new Chart(ctxL, {
-      type: "line",
-      data: {
-        labels: ["Pagi", "Siang", "Sore", "Malam"],
-        datasets: [
-          {
-            label: "Orders",
-            data: timeData,
-            borderColor: "#f59e0b",
-            borderWidth: 4,
-            tension: 0.4,
-            pointBackgroundColor: "#fff",
-            pointRadius: 4,
-            fill: true,
-            backgroundColor: "rgba(234, 88, 12, 0.05)",
-          },
-        ],
-      },
-      options: {
-        maintainAspectRatio: false,
-        scales: {
-          y: {
-            grid: { color: "rgba(255,255,255,0.03)" },
-            ticks: { color: "#57534e", font: { size: 9 } },
-          },
-          x: {
-            grid: { display: false },
-            ticks: { color: "#57534e", font: { size: 9 } },
-          },
+  const ctxL = document.getElementById("salesChart");
+  if (ctxL) {
+    if (!salesChart) {
+      salesChart = new Chart(ctxL.getContext("2d"), {
+        type: "line",
+        data: {
+          labels: ["Pagi", "Siang", "Sore", "Malam"],
+          datasets: [
+            {
+              label: "Orders",
+              data: timeData,
+              borderColor: "#f59e0b",
+              borderWidth: 4,
+              tension: 0.4,
+              pointBackgroundColor: "#fff",
+              pointRadius: 4,
+              fill: true,
+              backgroundColor: "rgba(234, 88, 12, 0.05)",
+            },
+          ],
         },
-        plugins: { legend: { display: false } },
-      },
-    });
-  } else {
-    salesChart.data.datasets[0].data = timeData;
-    salesChart.update();
+        options: {
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              grid: { color: "rgba(255,255,255,0.03)" },
+              ticks: { color: "#57534e", font: { size: 9 } },
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: "#57534e", font: { size: 9 } },
+            },
+          },
+          plugins: { legend: { display: false } },
+        },
+      });
+    } else {
+      salesChart.data.datasets[0].data = timeData;
+      salesChart.update();
+    }
   }
 }
 
@@ -557,18 +553,37 @@ function switchView(viewName) {
   }
 }
 
+// --- THE ACTUAL FIX FOR IMAGE VISIBILITY ---
 function previewImage(url) {
-    const img = document.getElementById("preview-img");
-    const modal = document.getElementById("modal-preview");
-    if (img && modal) {
-        img.src = url; // Di sini src diisi secara real-time sesuai tombol yang diklik
-        modal.classList.remove("hidden");
-        modal.classList.add("flex");
-    }
+  if (!url || url === "null" || url === "undefined" || url.trim() === "") {
+    return showNotification("Bukti transfer tidak tersedia.", "error");
+  }
+
+  const modal = document.getElementById("modal-preview");
+  const previewImg = document.getElementById("preview-img");
+
+  if (modal && previewImg) {
+    // Sembunyikan gambar saat loading
+    previewImg.style.opacity = "0";
+    previewImg.src = url;
+
+    // Pastikan modal muncul
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+
+    // Tampilkan gambar saat sudah siap
+    previewImg.onload = function () {
+      previewImg.style.opacity = "1";
+    };
+  }
 }
 
 function closePreview() {
-  document.getElementById("modal-preview").classList.add("hidden");
+  const modal = document.getElementById("modal-preview");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
 }
 
 function showNotification(text, type = "success") {
