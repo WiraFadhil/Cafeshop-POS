@@ -28,6 +28,7 @@ body {
     color: var(--ink);
     background-color: var(--paper);
     -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
     overflow-x: hidden;
 }
 
@@ -159,7 +160,7 @@ body {
 .nav-actions { display: flex; align-items: center; gap: 8px; }
 
 /* === VIEW === */
-.view-content { min-height: 100vh; }
+.view-content { min-height: 100vh; min-height: 100dvh; }
 
 /* === LANDING === */
 .hero { padding: 120px 20px 60px; }
@@ -280,6 +281,7 @@ body {
 /* === LOGIN / AUTH === */
 .auth-wrap {
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -326,6 +328,7 @@ body {
     grid-template-columns: 1fr 360px;
     gap: 0;
     min-height: 100vh;
+    min-height: 100dvh;
     padding-top: 61px;
 }
 .menu-panel {
@@ -513,7 +516,7 @@ body {
 #ticket-pay { margin-top: 20px; }
 
 /* === STAFF === */
-.staff-screen { min-height: 100vh; padding: 90px 20px 60px; background: var(--paper); max-width: 1160px; margin: 0 auto; }
+.staff-screen { min-height: 100vh; min-height: 100dvh; padding: 90px 20px 60px; background: var(--paper); max-width: 1160px; margin: 0 auto; }
 .staff-header {
     display: flex;
     justify-content: space-between;
@@ -615,7 +618,7 @@ body {
 .status-pill.selesai { color: var(--status-ready); border: 1px solid var(--status-ready); }
 
 /* === HISTORY (design.md 3.3) === */
-.history-screen { min-height: 100vh; max-width: 640px; margin: 0 auto; padding: 90px 20px 60px; }
+.history-screen { min-height: 100vh; min-height: 100dvh; max-width: 640px; margin: 0 auto; padding: 90px 20px 60px; }
 .history-header { margin-bottom: 32px; }
 .history-title { font-size: 36px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; }
 .history-sub { color: var(--graphite); font-size: 13px; margin: 0; }
@@ -759,6 +762,7 @@ body {
 /* Responsive (design.md 5): ticket becomes bottom drawer on narrow */
 @media (max-width: 900px) {
     .order-screen { grid-template-columns: 1fr; padding-top: 61px; }
+    .menu-panel { padding-bottom: 150px; }
     .ticket {
         position: fixed;
         left: 0;
@@ -766,23 +770,28 @@ body {
         bottom: 0;
         top: auto;
         height: auto;
-        max-height: 55vh;
+        max-height: 42vh;
         border-top: 1px solid var(--line);
         border-left: none;
-        padding: 16px 20px 20px;
+        padding: 12px 20px 16px;
         display: flex;
         flex-direction: column;
     }
-    .ticket-items { max-height: 30vh; }
+    .ticket-items { max-height: 22vh; }
     .ticket-totals, .ticket-rule { display: none; }
-    #ticket-pay { margin-top: 12px; }
-    .ticket-head { margin-bottom: 8px; }
+    #ticket-pay { margin-top: 10px; }
+    .ticket-head { margin-bottom: 6px; }
 
     .hero-inner { grid-template-columns: 1fr; gap: 48px; }
     .hero-title { font-size: 42px; }
     .about-grid { grid-template-columns: 1fr; }
     .reports-grid { grid-template-columns: 1fr; }
     .nav-actions .btn-ghost { color: var(--ink); }
+}
+
+@media (max-height: 620px) {
+    .ticket { max-height: 55vh; }
+    .ticket-items { max-height: 24vh; }
 }
 
 @media (max-width: 560px) {
@@ -794,14 +803,31 @@ body {
     .menu-item-name { font-size: 14px; margin-bottom: 8px; min-height: 36px; }
     .order-header { flex-direction: column; align-items: flex-start; gap: 12px; }
     .order-title { font-size: 28px; }
-    .menu-panel { padding: 24px 16px 110px; }
+    .menu-panel { padding: 24px 16px 150px; }
     .cat-row { gap: 6px; }
     .category-btn { padding: 7px 12px; font-size: 13px; }
     .hero { padding: 100px 16px 48px; }
+    .hero-title { font-size: 34px; }
+    .hero-actions { flex-direction: column; align-items: stretch; }
+    .hero-actions .btn { width: 100%; }
+    .hero-rating { left: 0; bottom: -14px; padding: 12px 16px; }
     .section { padding: 56px 16px; }
-    .staff-screen { padding: 80px 16px 60px; }
-    .history-screen { padding: 80px 16px 60px; }
+    .loc-map { height: 320px; }
     .staff-header, .staff-actions { flex-wrap: wrap; }
+    .staff-actions { width: 100%; }
+    .staff-actions .btn { flex: 1; }
     .auth-card { padding: 28px 20px; }
     .modal-panel { padding: 20px; }
+    .checkout-fields { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 360px) {
+    .menu-item-name { font-size: 13px; min-height: 34px; }
+    .menu-item-price { font-size: 13px; }
+    .menu-item-add { width: 26px; height: 26px; }
+    .about-cards { grid-template-columns: 1fr; }
+    .staff-title { font-size: 28px; }
+    .history-title { font-size: 28px; }
+    .loc-title { font-size: 32px; }
+    .hero-title { font-size: 30px; }
 }
