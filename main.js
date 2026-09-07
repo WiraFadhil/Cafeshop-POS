@@ -113,6 +113,7 @@ function handleLogout() {
 // --- CORE LOGIC ---
 
 async function syncData() {
+  if (MENU_DATA.length === 0) showMenuSkeleton();
   try {
     const { data: menu, error: menuErr } = await sbClient
       .from("menu")
@@ -149,8 +150,7 @@ function renderMenu() {
     .map(
       (c) => `
                 <button onclick="activeCategory='${c}';renderMenu()" 
-                class="category-btn px-4 py-2.5 md:px-5 md:py-3 rounded-xl border-2 border-orange-50 font-black text-[9px] md:text-[10px] uppercase tracking-widest whitespace-nowrap transition-all bg-white text-stone-400
-                ${activeCategory === c ? "active" : ""}">${c}</button>
+                class="category-btn ${activeCategory === c ? "active" : ""}">${c}</button>
             `,
     )
     .join("");
@@ -162,17 +162,31 @@ function renderMenu() {
   grid.innerHTML = filtered
     .map(
       (m) => `
-                <div class="menu-card bg-white rounded-2xl p-3 md:p-4 flex flex-col group">
-                    <div class="relative overflow-hidden rounded-xl mb-4 aspect-square bg-orange-50">
-                        <img src="${m.imageurl}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" onerror="this.src='https://via.placeholder.com/300?text=Kopi+Gacoan'">
-                    </div>
-                    <h3 class="font-black text-[10px] md:text-xs h-8 md:h-10 line-clamp-2 text-stone-800 leading-tight mb-2 uppercase tracking-tight">${m.nama}</h3>
-                    <div class="flex justify-between items-center mt-auto">
-                        <span class="text-orange-600 font-black text-xs md:text-sm tracking-tighter">Rp ${m.harga.toLocaleString()}</span>
-                        <button onclick="addToCart(${m.id})" class="bg-stone-900 text-white w-7 h-7 md:w-9 md:h-9 rounded-lg font-black hover:bg-orange-600 hover:scale-110 active:scale-90 transition-all shadow-lg flex items-center justify-center">＋</button>
+                <div class="menu-item" data-selected="${cart.some((c) => c.id === m.id)}" onclick="addToCart(${m.id})">
+                    <img src="${m.imageurl}" class="menu-item-img" alt="${m.nama}" loading="lazy" onerror="this.src='https://via.placeholder.com/300?text=Kopi'">
+                    <h3 class="menu-item-name">${m.nama}</h3>
+                    <div class="menu-item-row">
+                        <span class="menu-item-price">Rp ${m.harga.toLocaleString()}</span>
+                        <span class="menu-item-add">＋</span>
                     </div>
                 </div>
             `,
+    )
+    .join("");
+}
+
+function showMenuSkeleton() {
+  const grid = document.getElementById("menu-grid");
+  if (!grid) return;
+  grid.innerHTML = Array.from({ length: 10 })
+    .map(
+      () => `
+            <div class="menu-item">
+                <div class="skeleton skeleton-img"></div>
+                <div class="skeleton skeleton-line w70"></div>
+                <div class="skeleton skeleton-line w40"></div>
+            </div>
+        `,
     )
     .join("");
 }
@@ -190,15 +204,45 @@ function addToCart(id) {
 function updateCartUI() {
   const count = cart.reduce((a, b) => a + b.qty, 0);
   const total = cart.reduce((a, b) => a + b.harga * b.qty, 0);
-  const float = document.getElementById("cart-floating");
-  if (float) float.classList.toggle("hidden", count === 0);
-  document.getElementById("cart-count").innerText = count;
-  document.getElementById("cart-total").innerText =
-    `Rp ${total.toLocaleString()}`;
+
+  const ticket = document.getElementById("ticket-items");
+  const payBtn = document.getElementById("ticket-pay");
+  if (ticket) {
+    if (cart.length === 0) {
+      ticket.innerHTML =
+        `<p class="ticket-empty">Belum ada pesanan.</p>`;
+    } else {
+      ticket.innerHTML = cart
+        .map(
+          (c) => `
+                <div class="ticket-item-row slide-in">
+                    <span class="ticket-item-name">${c.nama}</span>
+                    <span class="ticket-item-qty">${c.qty}x</span>
+                    <span class="ticket-item-line"></span>
+                    <span class="ticket-item-price">${c.harga.toLocaleString()}</span>
+                </div>
+            `,
+        )
+        .join("");
+    }
+  }
+
+  const tax = Math.round(total * 0.1);
+  const grand = total + tax;
+  if (document.getElementById("ticket-grand"))
+    document.getElementById("ticket-grand").innerText = `Rp ${grand.toLocaleString()}`;
+  const subEl = document.querySelector("#ticket-total .ticket-line:nth-child(1) .mono");
+  const taxEl = document.querySelector("#ticket-total .ticket-line:nth-child(2) .mono");
+  if (subEl) subEl.innerText = `Rp ${total.toLocaleString()}`;
+  if (taxEl) taxEl.innerText = `Rp ${tax.toLocaleString()}`;
+  if (payBtn) payBtn.disabled = count === 0;
+
   document.getElementById("checkout-total-label").innerText =
     `Rp ${total.toLocaleString()}`;
   document.getElementById("qris-price-label").innerText =
     `Rp ${total.toLocaleString()}`;
+
+  renderMenu();
 }
 
 function openCheckout() {
@@ -218,15 +262,15 @@ function renderCheckoutItems() {
   list.innerHTML = cart
     .map(
       (c) => `
-                <div class="flex justify-between items-center py-4 bg-orange-50 px-4 rounded-xl border border-orange-100">
-                    <div class="flex-1">
-                        <p class="font-black text-[10px] uppercase tracking-tighter leading-none mb-1 text-stone-800">${c.nama}</p>
-                        <p class="text-[9px] text-orange-600 font-black uppercase tracking-widest">Rp ${c.harga.toLocaleString()}</p>
+                <div class="checkout-item">
+                    <div class="checkout-item-info">
+                        <span class="checkout-item-name">${c.nama}</span>
+                        <span class="checkout-item-price">Rp ${c.harga.toLocaleString()}</span>
                     </div>
-                    <div class="flex items-center gap-3 bg-white px-3 py-1.5 rounded-xl border border-orange-100 shadow-sm">
-                        <button onclick="changeQty(${c.id}, -1)" class="w-5 h-5 flex items-center justify-center font-black text-stone-300 hover:text-red-600 transition-colors">－</button>
-                        <span class="font-black text-[10px] w-4 text-center text-stone-900">${c.qty}</span>
-                        <button onclick="changeQty(${c.id}, 1)" class="w-5 h-5 flex items-center justify-center font-black text-orange-600 hover:scale-125 transition-all">＋</button>
+                    <div class="qty-stepper">
+                        <button onclick="changeQty(${c.id}, -1)" class="qty-btn minus">−</button>
+                        <span class="qty-val">${c.qty}</span>
+                        <button onclick="changeQty(${c.id}, 1)" class="qty-btn plus">＋</button>
                     </div>
                 </div>
             `,
@@ -350,35 +394,33 @@ function renderBaristaGrid(orders) {
   grid.innerHTML = active
     .map(
       (o) => `
-                <div class="dark-glass rounded-[2rem] p-6 transition-all border-l-[6px] ${o.status === "Verifikasi" ? "border-l-orange-500" : "border-l-amber-600"}">
-                    <div class="flex justify-between items-start mb-6">
-                        <div>
-                            <span class="text-[10px] font-black uppercase tracking-widest text-orange-500/60 block mb-1">Meja ${o.meja}</span>
-                            <span class="text-[10px] font-bold text-stone-500">${o.waktu}</span>
-                        </div>
-                        <div class="px-3 py-1 bg-white/5 rounded-lg text-[8px] font-black uppercase tracking-widest text-white/40">${o.pembayaran}</div>
+                <div class="order-card ${o.status === "Verifikasi" ? "verifikasi" : ""}">
+                    <div class="order-card-head">
+                        <span class="order-card-table">Meja ${o.meja}</span>
+                        <span class="order-card-time">${o.waktu}</span>
                     </div>
-                    <div class="space-y-3 mb-8 min-h-[100px] overflow-y-auto no-scrollbar">
+                    <span class="order-card-pay">${o.pembayaran}</span>
+                    <div class="order-card-body">
                         ${o.items
                           .map(
                             (i) => `
-                            <div class="flex items-center gap-3">
-                                <span class="w-6 h-6 flex items-center justify-center bg-orange-600 rounded-lg text-[10px] font-black text-white">${i.qty}</span>
-                                <span class="text-xs font-bold text-stone-200">${i.nama}</span>
+                            <div class="order-line">
+                                <span class="order-qty">${i.qty}x</span>
+                                <span class="order-name">${i.nama}</span>
                             </div>
                         `,
                           )
                           .join("")}
                     </div>
-                    <div class="pt-6 border-t border-white/5 space-y-3">
+                    <div class="order-card-foot">
                         ${
                           o.status === "Verifikasi"
                             ? `
-                            <button onclick="previewImage('${o.bukti_bayar}')" class="w-full py-3 bg-white/5 text-orange-400 rounded-xl font-black text-[9px] uppercase tracking-widest border border-orange-500/20">Cek Bukti</button>
-                            <button onclick="updateOrderStatus(${o.id}, 'Antre')" class="w-full py-3 bg-orange-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-xl">Terima Order</button>
+                            <button onclick="previewImage('${o.bukti_bayar}')" class="btn btn-ghost btn-block">Cek Bukti</button>
+                            <button onclick="updateOrderStatus(${o.id}, 'Antre')" class="btn btn-ink btn-block">Terima Order</button>
                         `
                             : `
-                            <button onclick="updateOrderStatus(${o.id}, 'Selesai')" class="w-full py-4 bg-amber-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg">Selesai & Antar</button>
+                            <button onclick="updateOrderStatus(${o.id}, 'Selesai')" class="btn btn-ink btn-block">Selesai &amp; Antar</button>
                         `
                         }
                     </div>
@@ -388,7 +430,7 @@ function renderBaristaGrid(orders) {
     .join("");
 
   if (active.length === 0) {
-    grid.innerHTML = `<div class="col-span-full text-center py-24 text-stone-700 font-black uppercase tracking-widest italic text-[10px]">Belum Ada Order Aktif</div>`;
+    grid.innerHTML = `<div class="order-empty">Belum Ada Order Aktif</div>`;
   }
 }
 
@@ -432,7 +474,7 @@ function updateCharts(orders) {
           datasets: [
             {
               data: [stats.verifikasi, stats.antre, stats.selesai],
-              backgroundColor: ["#ea580c", "#d97706", "#10b981"],
+              backgroundColor: ["#8B4034", "#D8D4CC", "#4A5D45"],
               borderWidth: 0,
             },
           ],
@@ -443,8 +485,8 @@ function updateCharts(orders) {
             legend: {
               position: "bottom",
               labels: {
-                color: "#78716c",
-                font: { weight: "bold", size: 9 },
+                color: "#6B665E",
+                font: { weight: "bold", size: 11 },
                 padding: 15,
               },
             },
@@ -473,13 +515,14 @@ function updateCharts(orders) {
             {
               label: "Orders",
               data: timeData,
-              borderColor: "#f59e0b",
-              borderWidth: 4,
+              borderColor: "#1A1816",
+              borderWidth: 3,
               tension: 0.4,
-              pointBackgroundColor: "#fff",
+              pointBackgroundColor: "#FAF9F6",
+              pointBorderColor: "#1A1816",
               pointRadius: 4,
               fill: true,
-              backgroundColor: "rgba(234, 88, 12, 0.05)",
+              backgroundColor: "rgba(26, 24, 22, 0.05)",
             },
           ],
         },
@@ -487,12 +530,12 @@ function updateCharts(orders) {
           maintainAspectRatio: false,
           scales: {
             y: {
-              grid: { color: "rgba(255,255,255,0.03)" },
-              ticks: { color: "#57534e", font: { size: 9 } },
+              grid: { color: "rgba(26,24,22,0.05)" },
+              ticks: { color: "#6B665E", font: { size: 11 } },
             },
             x: {
               grid: { display: false },
-              ticks: { color: "#57534e", font: { size: 9 } },
+              ticks: { color: "#6B665E", font: { size: 11 } },
             },
           },
           plugins: { legend: { display: false } },
@@ -511,25 +554,26 @@ function renderHistory() {
   const data = JSON.parse(localStorage.getItem("gacoan_history") || "[]");
 
   if (data.length === 0) {
-    list.innerHTML = `<div class="text-center py-32 text-stone-300 font-black italic text-[10px] tracking-widest">Belum ada riwayat pesanan.</div>`;
+    list.innerHTML = `<div class="history-empty">Belum ada riwayat pesanan.</div>`;
     return;
   }
 
   list.innerHTML = data
     .map(
       (h) => `
-                <div class="bg-white p-5 md:p-6 rounded-[2rem] border border-orange-50 flex justify-between items-center shadow-sm">
-                    <div class="flex-1">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="text-[8px] font-black text-stone-300 uppercase tracking-widest">#ORD-${h.id.toString().slice(-6)}</span>
-                            <span class="px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-widest ${h.status === "Verifikasi" ? "bg-orange-50 text-orange-600" : h.status === "Antre" ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"}">
-                                ${h.status}
-                            </span>
-                        </div>
-                        <p class="font-black text-stone-800 text-xs md:text-sm mb-1 uppercase tracking-tight">${h.items.map((i) => i.nama).join(", ")}</p>
-                        <p class="text-[8px] font-bold text-stone-400 uppercase tracking-widest">${h.waktu} • ${h.pembayaran}</p>
+                <div class="receipt-card">
+                    <div class="receipt-top">
+                        <span class="receipt-no">#ORD-${h.id.toString().slice(-6)}</span>
+                        <span class="receipt-status status-pill ${h.status.toLowerCase()}">${h.status}</span>
                     </div>
-                    <p class="font-black text-orange-600 text-lg md:text-xl tracking-tighter">Rp ${h.total.toLocaleString()}</p>
+                    <div class="receipt-items">${h.items
+                      .map((i) => `<span class="receipt-item">${i.nama} ×${i.qty}</span>`)
+                      .join("")}</div>
+                    <p class="receipt-meta">${h.waktu} · ${h.pembayaran}</p>
+                    <div class="receipt-foot">
+                        <span class="receipt-label">Total</span>
+                        <span class="receipt-total">Rp ${h.total.toLocaleString()}</span>
+                    </div>
                 </div>
             `,
     )
@@ -594,11 +638,13 @@ function showNotification(text, type = "success") {
 
   toastText.innerText = text;
   toastIcon.innerText = type === "success" ? "✓" : "!";
-  toast.className = `fixed top-4 md:top-10 left-1/2 -translate-x-1/2 z-[999] px-6 py-4 md:px-8 md:py-5 rounded-2xl md:rounded-[2rem] shadow-2xl transition-all duration-500 opacity-100 translate-y-0 text-white flex items-center gap-4 w-[90%] md:min-w-[340px] md:w-auto shadow-orange-900/20 ${type === "success" ? "bg-stone-900" : "bg-red-600"}`;
+  toast.classList.remove("error");
+  if (type === "error") toast.classList.add("error");
+  toast.classList.add("show");
 
-  setTimeout(() => {
-    toast.classList.replace("opacity-100", "opacity-0");
-    toast.classList.add("translate-y-[-20px]");
+  clearTimeout(showNotification._t);
+  showNotification._t = setTimeout(() => {
+    toast.classList.remove("show");
   }, 3000);
 }
 
