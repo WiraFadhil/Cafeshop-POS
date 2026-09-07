@@ -128,32 +128,55 @@ function loadChartJS(cb) {
   chartScriptLoading.then(cb);
 }
 
+function fetchWithTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout")), ms),
+    ),
+  ]);
+}
+
 async function syncData() {
   if (MENU_DATA.length === 0) showMenuSkeleton();
   try {
-    const { data: menu, error: menuErr } = await sbClient
-      .from("menu")
-      .select("*")
-      .order("nama");
-    if (menuErr) throw menuErr;
-    MENU_DATA = menu || [];
+    const [menuRes, ordersRes] = await Promise.all([
+      fetchWithTimeout(
+        sbClient.from("menu").select("*").order("nama"),
+        15000,
+      ),
+      fetchWithTimeout(
+        sbClient.from("orders").select("*").order("id", { ascending: false }),
+        15000,
+      ),
+    ]);
 
-    const { data: orders, error: orderErr } = await sbClient
-      .from("orders")
-      .select("*")
-      .order("id", { ascending: false });
-    if (orderErr) throw orderErr;
+    if (menuRes.error) throw menuRes.error;
+    MENU_DATA = menuRes.data || [];
+    if (ordersRes.error) throw ordersRes.error;
+    const orders = ordersRes.data || [];
 
     renderMenu();
-    renderBaristaGrid(orders || []);
+    renderBaristaGrid(orders);
     renderHistory();
 
     if (window.currentView === "barista" && window.isStaffAuthenticated) {
-      loadChartJS(() => updateCharts(orders || []));
+      loadChartJS(() => updateCharts(orders));
     }
   } catch (err) {
     console.error("Sync Error:", err);
+    if (MENU_DATA.length === 0) showMenuError();
   }
+}
+
+function showMenuError() {
+  const grid = document.getElementById("menu-grid");
+  if (!grid) return;
+  grid.innerHTML = `
+    <div class="menu-error">
+        <p>Gagal memuat menu.</p>
+        <button onclick="syncData()" class="btn btn-outline">Coba lagi</button>
+    </div>`;
 }
 
 function renderMenu() {

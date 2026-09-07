@@ -385,6 +385,14 @@ body {
     gap: 12px;
 }
 
+.menu-error {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 0 40px;
+    color: var(--graphite);
+}
+.menu-error p { margin: 0 0 16px; }
+
 /* Menu card (design.md 3.2) */
 .menu-item {
     border: 1px solid var(--line);
