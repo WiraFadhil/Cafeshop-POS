@@ -112,6 +112,22 @@ function handleLogout() {
 
 // --- CORE LOGIC ---
 
+// Lazy-load Chart.js only when staff dashboard needs it.
+let chartScriptLoading = null;
+function loadChartJS(cb) {
+  if (window.Chart) return cb();
+  if (!chartScriptLoading) {
+    chartScriptLoading = new Promise((resolve) => {
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/chart.js";
+      s.onload = resolve;
+      s.onerror = resolve;
+      document.head.appendChild(s);
+    });
+  }
+  chartScriptLoading.then(cb);
+}
+
 async function syncData() {
   if (MENU_DATA.length === 0) showMenuSkeleton();
   try {
@@ -133,7 +149,7 @@ async function syncData() {
     renderHistory();
 
     if (window.currentView === "barista" && window.isStaffAuthenticated) {
-      updateCharts(orders || []);
+      loadChartJS(() => updateCharts(orders || []));
     }
   } catch (err) {
     console.error("Sync Error:", err);
